@@ -1,0 +1,200 @@
+<!doctype html><html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Caption Studio</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#eceaff">
+<style>
+:root{--bg:#eceaff;--card:#fff;--ink:#15103d;--acc:#5b3df5;--hot:#ff5a36;--mut:#6b6794;--ln:#d9d4ff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 "Trebuchet MS",system-ui,sans-serif;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top)) 16px 6px}
+header b{font:900 22px/1 "Arial Black",system-ui,sans-serif;letter-spacing:-.5px}header b i{color:var(--acc);font-style:normal}
+header span{font-size:12px;background:var(--ink);color:#fff;padding:4px 10px;border-radius:99px}
+.stage{position:sticky;top:0;z-index:5;background:var(--bg);padding:6px 16px 8px}
+.screen{position:relative;display:flex;justify-content:center;background:#0d0a26;border-radius:22px;padding:8px;box-shadow:0 10px 30px #5b3df533}
+canvas#c{max-width:100%;max-height:40vh;border-radius:16px;display:block}
+#big{position:absolute;inset:0;margin:auto;width:64px;height:64px;border-radius:50%;border:0;background:#ffffffd9;font-size:26px;color:var(--acc)}
+.sc{display:flex;gap:10px;align-items:center;margin-top:8px;font-size:12px;color:var(--mut)}.sc input{flex:1;accent-color:var(--acc)}
+#st{padding:0 16px;min-height:20px;font-size:13px;color:var(--acc);font-weight:700}
+.p{display:none;padding:6px 16px}.p.on{display:block}
+.card{background:var(--card);border-radius:20px;padding:14px;margin:0 0 12px;border:1px solid var(--ln)}
+.card h3{margin:0 0 8px;font-size:15px}
+label.drop{display:block;text-align:center;padding:22px 10px;border:2px dashed var(--acc);border-radius:16px;color:var(--acc);font-weight:700}
+label.drop input{display:none}
+select,input[type=password],textarea{width:100%;font:inherit;padding:11px 12px;border-radius:12px;border:1px solid var(--ln);background:#f8f7ff;color:var(--ink);margin:4px 0}
+textarea{height:110px}
+button.b{width:100%;padding:13px;border:0;border-radius:14px;font:800 15px inherit;background:#e6e1ff;color:var(--acc);margin:4px 0}
+button.b.hot{background:var(--hot);color:#fff}button.b.pri{background:var(--acc);color:#fff}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px}
+.chips button{border:1px solid var(--ln);background:#fff;border-radius:99px;padding:7px 14px;font:700 13px inherit;color:var(--ink);white-space:nowrap}
+.chips button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.t{background:#fff;border:2px solid transparent;border-radius:14px;padding:4px;text-align:center;font-size:11px;font-weight:700}
+.t canvas{width:100%;border-radius:10px;display:block}.t.on{border-color:var(--acc)}
+.rg{display:block;margin:8px 0;font-weight:700;font-size:13px}.rg input{width:100%;accent-color:var(--acc)}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid var(--ln);padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:9}
+nav button{flex:1;border:0;background:none;font:700 11px inherit;color:var(--mut);padding:6px 0}nav button span{display:block;font-size:20px}
+nav button.on{color:var(--acc)}
+</style></head><body>
+<header><b>Caption<i>Studio</i></b><span id="cnt"></span></header>
+<div class="stage"><div class="screen"><canvas id="c" width="720" height="1280"></canvas><button id="big">▶</button></div>
+<div class="sc"><span id="tm">0:00</span><input type="range" id="sk" min="0" max="1000" value="0"><span id="du">0:00</span></div></div>
+<video id="v" playsinline style="display:none"></video><div id="st"></div>
+
+<div class="p on" id="p0">
+<div class="card"><label class="drop">Video chuno<input type="file" id="f" accept="video/*"></label></div>
+<div class="card"><h3>Captions kaise banayein</h3>
+<select id="mode"><option value="local">Offline Whisper (free, phone par chalta hai)</option><option value="groq">Free API (Groq, tez aur accurate)</option></select>
+<select id="model"><option value="Xenova/whisper-base">Model: Base (~80MB, tez)</option><option value="Xenova/whisper-small">Model: Small (~250MB, behtar Hindi)</option><option value="Xenova/whisper-tiny">Model: Tiny (~40MB, sabse tez)</option></select>
+<input id="key" type="password" placeholder="Groq API key (sirf API mode ke liye)">
+<select id="lang"><option value="hi">Bolna: Hindi / Urdu / Hinglish</option><option value="en">Bolna: English</option><option value="">Auto detect</option></select>
+<select id="scr"><option value="rom">Likhna: Hinglish (Roman)</option><option value="dev">Likhna: Hindi (देवनागरी)</option></select>
+<button class="b pri" id="go">Captions generate karo</button></div>
+<div class="card"><h3>Text theek karo</h3><textarea id="tx" placeholder="Captions yahan aayenge. Har line = ek group."></textarea><button class="b" id="ap">Text lagao</button></div></div>
+
+<div class="p" id="p1"><div class="chips" id="ch"></div><div class="grid" id="gr"></div></div>
+
+<div class="p" id="p2"><div class="card"><h3>Caption style</h3>
+<label class="rg">Size<input type="range" id="s1" min="4" max="14" value="7.5" step=".5"></label>
+<label class="rg">Upar / neeche<input type="range" id="s2" min="15" max="90" value="72"></label>
+<label class="rg">Ek baar mein words<input type="range" id="s3" min="1" max="5" value="3"></label>
+<label class="rg">Highlight color <input type="color" id="s4" value="#ffd23f"></label>
+<button class="b" id="rs">Template ka asli color</button></div></div>
+
+<div class="p" id="p3"><div class="card"><h3>Export</h3>
+<button class="b hot" id="ex">Captions wali video banao</button>
+<div class="row"><button class="b" id="srt">SRT</button><button class="b" id="txt">TXT</button></div>
+<p style="color:var(--mut);font-size:13px">Video export real-time chalta hai: jitni lambi video, utna time. Export ke dauran app khula rakho.</p></div></div>
+
+<nav id="nv"><button class="on" data-p="0"><span>🎙</span>Captions</button><button data-p="1"><span>✨</span>Templates</button><button data-p="2"><span>🎚</span>Style</button><button data-p="3"><span>⬇</span>Export</button></nav>
+<script type="module">
+import {hinglish} from './translit.js';
+CanvasRenderingContext2D.prototype.roundRect||=function(x,y,w,h){this.rect(x,y,w,h)};
+const F=['900 #px "Arial Black","Segoe UI",system-ui,sans-serif','900 #px Impact,"Haettenschweiler","Arial Narrow",sans-serif','italic 800 #px Georgia,"Times New Roman",serif','800 #px ui-monospace,Menlo,Consolas,monospace','800 #px "Comic Sans MS","Marker Felt","Chalkboard SE",cursive','800 #px "Trebuchet MS","Segoe UI",system-ui,sans-serif'];
+const TP=`Hormozi|Viral|#fff|#00ffff|hl|1|
+MrBeast|Viral|#ffff00|#ff6600|bounce|1|
+Crimson Pop|Viral|#fff|#dc2626|box|0|
+Podcast Viral|Viral|#fff|#a3e635|hl|0|
+Submagic|Viral|#fef9c3|#a855f7|tilt|0|
+TikTok Hype|Viral|#fff|#f97316|bounce|0|
+Karaoke|Viral|#fff|#3b82f6|kar|0|
+Classic|Viral|#fff|#ffff00|hl|5|
+Kapwing Blue|Viral|#fff|#2563eb|box|0|
+Ali Abdaal|Viral|#fffbeb|#38bdf8|hl|5|
+One Word|Viral|#fff|#facc15|single|1|
+Shorts Punch|Viral|#fff|#ef4444|single|0|
+Hype Shake|Viral|#fff|#fde047|shake|1|
+Wave Rider|Viral|#fff|#22d3ee|wave|0|
+Type Rush|Viral|#fff|#4ade80|type|3|
+Underline Pro|Viral|#fff|#f43f5e|under|0|
+Slide Up|Viral|#fff|#fb923c|slide|5|
+Dim Focus|Viral|#fff|#facc15|dim|0|
+Nordic Clean|Clean|#fff|#94a3b8|dim|5|cs
+Minimal|Clean|#fff|#fef08a|hl|5|cs
+Clean Tech|Clean|#fff|#38bdf8|hl|5|b
+Code Terminal|Clean|#f1f5f9|#22c55e|type|3|b
+Soft Bar|Clean|#fff|#fbbf24|hl|5|bc
+Mono Slide|Clean|#e2e8f0|#fff|slide|3|cs
+Quiet Fade|Clean|#f8fafc|#fff|dim|5|cs
+Glass Bar|Clean|#fff|#7dd3fc|kar|5|b
+Studio|Clean|#fff|#34d399|under|5|cs
+Chill Lowercase|Clean|#fff|#a5b4fc|hl|5|cs
+Cyberpunk|Neon|#22d3ee|#f43f5e|glow|1|
+Fintech Wealth|Neon|#e0e7ff|#10b981|glow|0|
+Dark Psychology|Neon|#fff|#dc2626|glow|0|
+Neon Cyber|Neon|#fff|#14b8a6|glow|0|
+Vapor|Neon|#f0abfc|#22d3ee|glow|5|
+Laser Lime|Neon|#d9f99d|#a3e635|glow|1|
+Plasma|Neon|#fff|#8b5cf6|glow|0|
+Hot Wire|Neon|#fecaca|#f43f5e|wave|1|
+Aqua Pulse|Neon|#cffafe|#06b6d4|bounce|5|
+Ultra Violet|Neon|#ddd6fe|#a855f7|kar|1|
+Documentary|Film|#f1f5f9|#e11d48|dim|2|cs
+Luxury|Film|#f8fafc|#d97706|dim|2|cs
+Cinema Noir|Film|#e2e8f0|#fff|dim|2|cs
+Cinema Gold|Film|#fafafa|#ca8a04|hl|2|cs
+Vox Explainer|Film|#f8fafc|#fbbf24|hl|5|b
+Trailer|Film|#fff|#ef4444|single|1|
+Retro Reel|Film|#fde68a|#f59e0b|type|2|cs
+Noir Slide|Film|#d4d4d8|#fff|slide|2|cs
+Epic|Film|#fff|#eab308|tilt|1|
+Subtitle Classic|Film|#fef08a|#fff|hl|5|cs
+Creator Pop|Fun|#fff|#ec4899|bounce|4|
+Warm Pastel|Fun|#f3e8ff|#fb7185|bounce|4|
+Urban Rebel|Fun|#fef08a|#ef4444|shake|1|
+Retro Glitch|Fun|#fce7f3|#8b5cf6|shake|4|
+Bubble Gum|Fun|#fff|#f472b6|box|4|
+Candy Wave|Fun|#fff|#a78bfa|wave|4|
+Lemon Pop|Fun|#fff|#facc15|box|5|
+Sticker|Fun|#fff|#34d399|tilt|4|
+Comic|Fun|#fff|#f97316|bounce|4|
+Pixel|Fun|#fff|#22c55e|type|3|
+Jelly|Fun|#fff|#38bdf8|wave|5|
+Party|Fun|#fff|#e879f9|shake|4|
+Desi Pop|Desi|#fff|#ff9933|bounce|1|
+Chai Time|Desi|#fff7ed|#f59e0b|hl|4|
+Bollywood Gold|Desi|#fff|#fbbf24|glow|2|
+Mumbai Neon|Desi|#fff|#ec4899|glow|1|
+Filmy|Desi|#fff|#ef4444|tilt|1|
+Dhamaka|Desi|#fff|#f97316|shake|1|
+Swag|Desi|#fff|#22d3ee|slide|1|
+Bindaas|Desi|#fff|#84cc16|box|0|
+Tiranga|Desi|#fff|#16a34a|kar|1|
+Shaadi|Desi|#fef3c7|#f43f5e|dim|2|
+Reel King|Desi|#fff|#a855f7|single|1|
+Yaari|Desi|#fff|#facc15|wave|4|`.split('\n').map(l=>{const a=l.split('|');return{n:a[0],cat:a[1],col:a[2],hi:a[3],an:a[4],f:+a[5],fl:a[6]||''}});
+const $=i=>document.getElementById(i),v=$('v'),c=$('c'),x=c.getContext('2d'),st=m=>$('st').textContent=m;
+let W=[],ti=0,cat='Viral';const o={size:.075,y:.72,G:3,acc:''};$('cnt').textContent=TP.length+' templates';
+function cap(X,w,h,ws0,k,t,tp,o){const G=tp.an=='single'?1:o.G,g=Math.floor(k/G)*G,ws=ws0.slice(g,g+G),hi=o.acc||tp.hi,fl=tp.fl,L=fl.includes('c')?s=>s:s=>s.toUpperCase();
+let fs=w*o.size;const set=()=>X.font=F[tp.f].replace('#',fs),ms=()=>ws.map(q=>X.measureText(L(q.t)+' ').width);set();let m=ms(),tot=m.reduce((a,b)=>a+b,0);
+if(tot>w*.9){fs*=w*.9/tot;set();m=ms();tot=m.reduce((a,b)=>a+b,0)}
+let px=(w-tot)/2;const py=h*o.y;X.textBaseline='middle';X.textAlign='center';X.lineJoin='round';
+if(fl.includes('b')){X.fillStyle='#000a';X.beginPath();X.roundRect(px-fs*.35,py-fs*.8,tot+fs*.5,fs*1.6,fs*.3);X.fill()}
+ws.forEach((q,j)=>{const on=g+j==k,age=Math.min(1,Math.max(0,(t-q.s)/.14)),an=tp.an;if(an=='type'&&g+j>k){px+=m[j];return}if(an=='single'&&!on){px+=m[j];return}
+let sc=1,dy=0,rot=0,al=1,col=tp.col;
+if(on){col=hi;if(an=='hl'||an=='box'||an=='single')sc=1+.2*(1-age);if(an=='bounce')dy=-Math.sin(Math.min(age*2.5,1)*Math.PI)*fs*.25;if(an=='shake')rot=Math.sin(t*70)*.07;if(an=='tilt'){rot=-.08;sc=1.15}if(an=='slide'){dy=(1-age)*fs*.5;al=.3+.7*age}if(an=='single')sc*=1.35}
+if(an=='wave')dy=Math.sin(t*9+j*1.2)*fs*.14;if(an=='kar'&&g+j<k)col=hi;if(an=='dim'&&!on)al=.5;if(an=='type')col=on?hi:tp.col;
+X.save();X.globalAlpha=al;X.translate(px+m[j]/2,py+dy);X.rotate(rot);X.scale(sc,sc);set();const T=L(q.t);
+if(on&&an=='box'){X.fillStyle=hi;X.beginPath();X.roundRect(-m[j]/2,-fs*.65,m[j],fs*1.3,fs*.25);X.fill();col='#fff'}
+if(fl.includes('s')){X.shadowColor='#000c';X.shadowBlur=fs*.25;X.shadowOffsetY=fs*.05}else if(!fl.includes('o')&&!fl.includes('b')&&!(on&&an=='box')){X.lineWidth=fs*.16;X.strokeStyle='#000';X.strokeText(T,0,0)}
+if(on&&an=='glow'){X.shadowColor=hi;X.shadowBlur=fs*.7}X.fillStyle=col;X.fillText(T,0,0);
+if(on&&an=='under'){X.shadowBlur=0;X.fillStyle=hi;X.fillRect(-m[j]/2+fs*.1,fs*.55,m[j]-fs*.3,fs*.1)}X.restore();px+=m[j]})}
+const DEMO='AAJ KA VIDEO DEKHO KYA HOTA HAI'.split(' ').map((t,i)=>({t,s:i*.5,e:i*.5+.5}));
+function kAt(t,A){let i=A.findIndex(w=>t>=w.s&&t<w.e+.15);if(i<0){i=A.findLastIndex(w=>w.e<t);if(i<0||t>A[i].e+.7)return -1}return i}
+const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+(function L(){if(v.videoWidth){x.drawImage(v,0,0,c.width,c.height);const k=kAt(v.currentTime,W);if(k>=0)cap(x,c.width,c.height,W,k,v.currentTime,TP[ti],o);
+if(v.duration){$('sk').value=v.currentTime/v.duration*1000;$('tm').textContent=fmt(v.currentTime);$('du').textContent=fmt(v.duration)}}
+else{const g=x.createLinearGradient(0,0,c.width,c.height);g.addColorStop(0,'#3b2a9a');g.addColorStop(1,'#0d0a26');x.fillStyle=g;x.fillRect(0,0,c.width,c.height);const t=(performance.now()/1000)%(DEMO.length*.5);cap(x,c.width,c.height,DEMO,Math.floor(t/.5),t,TP[ti],o)}
+requestAnimationFrame(L)})();
+$('sk').oninput=e=>{if(v.duration)v.currentTime=e.target.value/1000*v.duration};
+$('big').onclick=()=>{if(!v.videoWidth)return st('Pehle video chuno');v.paused?v.play():v.pause()};
+v.onplay=()=>$('big').style.display='none';v.onpause=()=>$('big').style.display='';
+c.onclick=()=>v.videoWidth&&(v.paused?v.play():v.pause());
+$('f').onchange=e=>{v.src=URL.createObjectURL(e.target.files[0]);v.onloadedmetadata=()=>{c.width=v.videoWidth;c.height=v.videoHeight;v.currentTime=.1;st('Video ready. Ab captions generate karo.')}};
+$('nv').onclick=e=>{const b=e.target.closest('button');if(!b)return;[...$('nv').children].forEach(z=>z.classList.toggle('on',z==b));document.querySelectorAll('.p').forEach((p,i)=>p.classList.toggle('on',i==b.dataset.p));if(b.dataset.p==1)grid()};
+const cats=[...new Set(TP.map(t=>t.cat))];cats.forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>{cat=k;grid()};$('ch').append(b)});
+function grid(){[...$('ch').children].forEach(b=>b.classList.toggle('on',b.textContent==cat));$('gr').innerHTML='';
+TP.forEach((tp,i)=>{if(tp.cat!=cat)return;const d=document.createElement('div');d.className='t'+(i==ti?' on':'');const cv=document.createElement('canvas');cv.width=200;cv.height=150;const X=cv.getContext('2d'),g=X.createLinearGradient(0,0,200,150);g.addColorStop(0,'#4b3bb8');g.addColorStop(1,'#14102f');X.fillStyle=g;X.fillRect(0,0,200,150);
+cap(X,200,150,[{t:'AAJ',s:0,e:1},{t:'KA',s:0,e:1},{t:'VIDEO',s:0,e:1}],1,.08,tp,{size:.12,y:.5,G:3,acc:''});d.append(cv,tp.n);d.onclick=()=>{ti=i;grid()};$('gr').append(d)})}
+[['s1',v=>o.size=v/100],['s2',v=>o.y=v/100],['s3',v=>o.G=+v],['s4',v=>o.acc=v]].forEach(([i,f])=>$(i).oninput=e=>f(e.target.value));$('rs').onclick=()=>o.acc='';
+async function pcm(file){const d=await new AudioContext().decodeAudioData(await file.arrayBuffer()),r=new OfflineAudioContext(1,Math.ceil(d.duration*16000),16000),s=r.createBufferSource();s.buffer=d;s.connect(r.destination);s.start();return (await r.startRendering()).getChannelData(0)}
+function wav(f){const b=new DataView(new ArrayBuffer(44+f.length*2)),w=(p,s)=>[...s].forEach((h,i)=>b.setUint8(p+i,h.charCodeAt(0)));w(0,'RIFF');b.setUint32(4,36+f.length*2,1);w(8,'WAVEfmt ');b.setUint32(16,16,1);b.setUint16(20,1,1);b.setUint16(22,1,1);b.setUint32(24,16000,1);b.setUint32(28,32000,1);b.setUint16(32,2,1);b.setUint16(34,16,1);w(36,'data');b.setUint32(40,f.length*2,1);f.forEach((s,i)=>b.setInt16(44+i*2,Math.max(-1,Math.min(1,s))*32767,1));return new Blob([b],{type:'audio/wav'})}
+const fix=t=>$('scr').value=='rom'?hinglish(t):t;
+$('go').onclick=async()=>{const file=$('f').files[0];if(!file)return st('Pehle video chuno');try{st('Audio nikal raha hoon...');const a=await pcm(file),lang=$('lang').value;let R;
+if($('mode').value=='groq'){const k=$('key').value.trim();if(!k)return st('Groq API key daalo');st('API se transcribe ho raha hai...');const fd=new FormData();fd.append('file',wav(a),'a.wav');fd.append('model','whisper-large-v3-turbo');fd.append('response_format','verbose_json');fd.append('timestamp_granularities[]','word');if(lang)fd.append('language',lang);if(lang=='hi')fd.append('prompt','Hinglish: aaj hum dekhenge ki kya hota hai.');
+const r=await fetch('https://api.groq.com/openai/v1/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+k},body:fd});if(!r.ok)throw new Error(await r.text());R=(await r.json()).words.map(w=>({t:w.word,s:w.start,e:w.end}))}
+else{st('Whisper load ho raha hai (pehli baar download)...');const {pipeline}=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0');
+const p=await pipeline('automatic-speech-recognition',$('model').value,{progress_callback:d=>d.progress&&st('Model: '+Math.round(d.progress)+'%')});st('Transcribe ho raha hai...');
+const q=await p(a,{return_timestamps:'word',chunk_length_s:30,...(lang?{language:lang=='hi'?'hindi':'english',task:'transcribe'}:{})});R=q.chunks.map(w=>({t:w.text,s:w.timestamp[0],e:w.timestamp[1]??w.timestamp[0]+.4}))}
+W=R.map(w=>({t:fix(w.t.trim()),s:w.s,e:w.e})).filter(w=>w.t);$('tx').value=lines();st(W.length+' words ready. Template tab mein style chuno.');v.currentTime=.1}catch(e){st('Error: '+e.message)}};
+const lines=()=>{const o=[];for(let i=0;i<W.length;i+=o_G())o.push(W.slice(i,i+o_G()).map(w=>w.t).join(' '));return o.join('\n')},o_G=()=>o.G;
+$('ap').onclick=()=>{const g=o.G;$('tx').value.split('\n').filter(Boolean).forEach((l,i)=>l.split(/\s+/).forEach((t,j)=>{if(W[i*g+j])W[i*g+j].t=t}));st('Text update ho gaya')};
+const tc=s=>new Date(s*1000).toISOString().substr(11,8)+','+String(Math.round(s%1*1000)).padStart(3,'0');
+const dl=(b,n)=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click()};
+$('srt').onclick=()=>{let s='',n=1;for(let i=0;i<W.length;i+=o.G){const g=W.slice(i,i+o.G);s+=`${n++}\n${tc(g[0].s)} --> ${tc(g.at(-1).e)}\n${g.map(w=>w.t).join(' ')}\n\n`}dl(new Blob([s]),'captions.srt')};
+$('txt').onclick=()=>dl(new Blob([W.map(w=>w.t).join(' ')]),'captions.txt');
+$('ex').onclick=()=>{if(!W.length)return st('Pehle captions banao');const s=c.captureStream(30),vs=(v.captureStream||v.mozCaptureStream).call(v);vs.getAudioTracks().forEach(t=>s.addTrack(t));
+const mt=['video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(t=>MediaRecorder.isTypeSupported(t)),r=new MediaRecorder(s,{mimeType:mt,videoBitsPerSecond:8e6}),ch=[];
+r.ondataavailable=e=>ch.push(e.data);r.onstop=()=>{dl(new Blob(ch,{type:mt}),'captioned.'+(mt.includes('mp4')?'mp4':'webm'));st('Export ho gaya')};
+v.currentTime=0;v.onended=()=>{r.stop();v.onended=null};v.onseeked=()=>{v.onseeked=null;r.start();v.play();st('Export chal raha hai...')}};
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
